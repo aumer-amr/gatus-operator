@@ -11,66 +11,98 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var (
-	baseAnnotation = "gatus.io/"
-)
-
-func (r *ReconcileGatus) GatusReconcile(gatus *gatusiov1alpha1.Gatus) {
+func (r *ReconcileGatus) GatusReconcile(gatus *gatusiov1alpha1.Gatus) error {
 	logger.Info("reconciling Gatus", "name", gatus.Name, "namespace", gatus.Namespace)
 
-	configMapName := fmt.Sprintf("%s-gatus-config", gatus.Name)
-	configMapExists, err := r.checkConfigMapExists(context.Background(), gatus.Namespace, configMapName)
+	configMapList := corev1.ConfigMapList{}
+	err := r.Manager.GetClient().List(context.Background(), &configMapList, client.MatchingLabels{
+		"app.kubernetes.io/managed-by": "gatus.io",
+		"gatus.io/parent-uid":          string(gatus.ObjectMeta.UID),
+	})
 
 	if err != nil {
-		logger.Error(err, "error checking if ConfigMap exists")
-		return
+		return err
 	}
 
-	if !configMapExists {
-		logger.Info("ConfigMap does not exist, creating", "name", configMapName)
-		err := r.createConfigMap(gatus, configMapName)
-		if err != nil {
-			logger.Error(err, "error creating ConfigMap", "error")
-			return
+	if !gatus.ObjectMeta.DeletionTimestamp.IsZero() {
+		if len(configMapList.Items) == 1 {
+			configMap := configMapList.Items[0]
+			return r.Delete(gatus, configMap)
 		}
-	}
-}
-
-func (r *ReconcileGatus) createConfigMap(gatus *gatusiov1alpha1.Gatus, configMapName string) error {
-	yamlBytes, err := yaml.Marshal(gatus.Spec.Endpoint)
-	if err != nil {
-		return fmt.Errorf("Error converting struct to YAML: %v\n", err)
+		return nil
 	}
 
-	yamlString := string(yamlBytes)
-
-	configMap := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      configMapName,
-			Namespace: gatus.Namespace,
-		},
-		Data: map[string]string{
-			"gatus.yaml": yamlString,
-		},
+	if len(configMapList.Items) == 0 {
+		return r.Create(gatus)
 	}
 
-	err = r.Client.Create(context.Background(), configMap)
-	if err != nil {
-		return fmt.Errorf("error creating ConfigMap: %w", err)
+	if len(configMapList.Items) == 1 {
+		configMap := configMapList.Items[0]
+		return r.Update(gatus, configMap)
 	}
 
 	return nil
 }
 
-func (r *ReconcileGatus) checkConfigMapExists(ctx context.Context, namespace string, name string) (bool, error) {
-	configMap := &corev1.ConfigMap{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, configMap)
-
+func (r *ReconcileGatus) Create(gatus *gatusiov1alpha1.Gatus) error {
+	yamlString, err := r.GetEndpointsYaml(gatus)
 	if err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			return false, nil
-		}
-		return false, fmt.Errorf("error checking ConfigMap: %w", err)
+		return fmt.Errorf("error getting YAML: %w", err)
 	}
-	return true, nil
+
+	configMap := &corev1.ConfigMap{
+		ObjectMeta: r.GenerateMetaData(gatus),
+		Data: map[string]string{
+			"gatus.yaml": yamlString,
+		},
+	}
+
+	r.Manager.GetClient().Create(context.Background(), configMap)
+
+	return nil
+}
+
+func (r *ReconcileGatus) Update(gatus *gatusiov1alpha1.Gatus, configMap corev1.ConfigMap) error {
+	yamlString, err := r.GetEndpointsYaml(gatus)
+	if err != nil {
+		return fmt.Errorf("error getting YAML: %w", err)
+	}
+
+	configMap.Data["gatus.yaml"] = yamlString
+	r.Manager.GetClient().Update(context.Background(), &configMap)
+
+	return nil
+}
+
+func (r *ReconcileGatus) Delete(gatus *gatusiov1alpha1.Gatus, configMap corev1.ConfigMap) error {
+	r.Manager.GetClient().Delete(context.Background(), &configMap)
+
+	return nil
+}
+
+func (r *ReconcileGatus) GetEndpointsYaml(gatus *gatusiov1alpha1.Gatus) (string, error) {
+	type GatusEndpoint struct {
+		Endpoints []gatusiov1alpha1.EndpointEndpoint `json:"endpoints"`
+	}
+
+	yamlBytes, err := yaml.Marshal(GatusEndpoint{Endpoints: []gatusiov1alpha1.EndpointEndpoint{gatus.Spec.Endpoint}})
+	if err != nil {
+		return "", fmt.Errorf("error converting struct to YAML: %v", err)
+	}
+
+	yamlString := string(yamlBytes)
+
+	return yamlString, nil
+}
+
+func (r *ReconcileGatus) GenerateMetaData(gatus *gatusiov1alpha1.Gatus) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
+		Name:      fmt.Sprintf("%s-%s", gatus.Name, "gatus-config"),
+		Namespace: gatus.Namespace,
+		Labels: map[string]string{
+			"app.kubernetes.io/managed-by": "gatus.io",
+			"gatus.io/enabled":             "enabled",
+			"gatus.io/parent-uid":          string(gatus.ObjectMeta.UID),
+		},
+	}
 }

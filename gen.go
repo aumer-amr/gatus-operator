@@ -24,7 +24,7 @@ func main() {
 
 	var sb strings.Builder
 	sb.WriteString("package v1alpha1\n\n")
-	sb.WriteString("import ( \"net/http\" )\n\n")
+	sb.WriteString("import (\n\t\"encoding/json\"\n)\n\n")
 	for _, structDef := range structs {
 		sb.WriteString("// +k8s:deepcopy-gen=true\n" + structDef + "\n")
 	}
@@ -72,7 +72,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 		}
 
 		if strings.Contains(fieldTypeString, ".") {
-			var re = regexp.MustCompile(`(?m)^[^a-z]*?([a-z]*)\.([a-zA-Z0-9]*)$`)
+			var re = regexp.MustCompile(`(?m)^[^a-z]*?(\*{0,1}[a-z]*)\.([a-zA-Z0-9]*)$`)
 			fieldTypeString = re.ReplaceAllString(fieldTypeString, "$1$2")
 
 			if fieldType.Kind() != reflect.Func {
@@ -82,6 +82,9 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 
 		if yamlTag := fieldTag.Get("yaml"); yamlTag != "" {
 			newTag := strings.Replace(string(fieldTag), "yaml", "json", 1)
+
+			newTag = applyOmitEmpty(newTag)
+
 			fieldTag = reflect.StructTag(newTag)
 		}
 
@@ -91,8 +94,14 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 			elemType := fieldType.Elem()
 			if elemType.Kind() == reflect.Struct || elemType.Kind() == reflect.Ptr {
 				generateStruct(elemType, structs)
-			} else {
-				fieldTypeString = fmt.Sprintf("[]%s", elemType.Kind())
+			}
+
+			if !strings.Contains(fieldTypeString, "[]") {
+				fieldTypeString = fmt.Sprintf("[]%s", fieldTypeString)
+			}
+
+			if fieldName == "Conditions" {
+				fieldTypeString = "[]string"
 			}
 
 			if fieldTag != "" {
@@ -108,7 +117,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 			}
 
 			if fieldName == "httpClient" {
-				fieldTypeString = "http.Client"
+				continue
 			}
 
 			if fieldTag != "" {
@@ -123,7 +132,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 				}
 
 				if fieldTypeString == "map[string]interface {}" {
-					fieldTypeString = "map[string]any"
+					fieldTypeString = "map[string]json.RawMessage"
 				}
 
 				if fieldTag != "" {
@@ -151,9 +160,30 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 	structs[typString] = sb.String()
 }
 
+func applyOmitEmpty(newTag string) string {
+	if strings.Contains(newTag, ",omitempty") {
+		return newTag
+	}
+
+	if strings.Contains(newTag, "\"-\"") {
+		return newTag
+	}
+
+	lastIndex := strings.LastIndex(newTag, "\"")
+	if lastIndex == -1 {
+		return newTag
+	}
+
+	return newTag[:lastIndex] + ",omitempty\""
+}
+
 func CapitalizeFirstLetter(s string) string {
 	if len(s) == 0 {
 		return s
+	}
+
+	if s[0] == '*' && len(s) > 1 {
+		return "*" + string(unicode.ToUpper(rune(s[1]))) + s[2:]
 	}
 
 	return string(unicode.ToUpper(rune(s[0]))) + s[1:]

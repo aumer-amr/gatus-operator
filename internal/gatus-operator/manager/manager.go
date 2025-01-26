@@ -7,6 +7,7 @@ import (
 
 	gatusiov1alpha1 "github.com/aumer-amr/gatus-operator/v2/api/v1alpha1"
 	"github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/config"
+	"github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/controller"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -25,7 +26,7 @@ func init() {
 	utilruntime.Must(gatusiov1alpha1.AddToScheme(scheme))
 }
 
-func Run() ctrl.Manager {
+func Run() {
 	logger.Info("setting up manager")
 
 	config := config.Generate()
@@ -61,11 +62,11 @@ func Run() ctrl.Manager {
 		panic(fmt.Errorf("unable to add readyz check: %w", err))
 	}
 
+	controller.Run(manager)
+
 	logger.Info("starting manager")
 	if err := manager.Start(ctrl.SetupSignalHandler()); err != nil {
 		logger.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-
-	return manager
 }

@@ -7,3 +7,9 @@ The API is generated using the following commands:
 - deepcopy-gen --v=9 ./api/v1alpha1
 - controller-gen crd:crdVersions=v1 paths=./api/v1alpha1 output:crd:dir=./crd/bases
 ```
+
+## Change in fields
+- HttpClient in ClientConfig is ommited (can't deep copy it)
+- ProviderOverride is casted to map[string]json.RawMessage
+- Any time.Duration is casted to string for the CRD (otherwise it will be an int64)
+- Everything is forced to be omitempty so the configmap will only contain the fields that are actually set

@@ -40,24 +40,22 @@ spec:
               endpoint:
                 properties:
                   alerts:
-                    properties:
-                      description:
-                        type: string
-                      enabled:
-                        type: boolean
-                      failure-threshold:
-                        type: integer
-                      send-on-resolved:
-                        type: boolean
-                      success-threshold:
-                        type: integer
-                      type:
-                        type: string
-                    required:
-                    - failure-threshold
-                    - success-threshold
-                    - type
-                    type: object
+                    items:
+                      properties:
+                        description:
+                          type: string
+                        enabled:
+                          type: boolean
+                        failure-threshold:
+                          type: integer
+                        send-on-resolved:
+                          type: boolean
+                        success-threshold:
+                          type: integer
+                        type:
+                          type: string
+                      type: object
+                    type: array
                   body:
                     type: string
                   client:
@@ -68,8 +66,6 @@ spec:
                         properties:
                           audience:
                             type: string
-                        required:
-                        - audience
                         type: object
                       ignore-redirect:
                         type: boolean
@@ -89,11 +85,6 @@ spec:
                             type: array
                           token-url:
                             type: string
-                        required:
-                        - client-id
-                        - client-secret
-                        - scopes
-                        - token-url
                         type: object
                       proxy-url:
                         type: string
@@ -108,9 +99,6 @@ spec:
                           renegotiation:
                             type: string
                         type: object
-                    required:
-                    - network
-                    - timeout
                     type: object
                   conditions:
                     items:
@@ -122,9 +110,6 @@ spec:
                         type: string
                       query-type:
                         type: string
-                    required:
-                    - query-name
-                    - query-type
                     type: object
                   enabled:
                     type: boolean
@@ -155,11 +140,7 @@ spec:
                                 items:
                                   type: integer
                                 type: array
-                            required:
-                            - thresholds
                             type: object
-                        required:
-                        - response-time
                         type: object
                       dont-resolve-failed-conditions:
                         type: boolean
@@ -169,19 +150,9 @@ spec:
                         type: boolean
                       hide-url:
                         type: boolean
-                    required:
-                    - badge
-                    - dont-resolve-failed-conditions
-                    - hide-conditions
-                    - hide-hostname
-                    - hide-url
                     type: object
                   url:
                     type: string
-                required:
-                - conditions
-                - name
-                - url
                 type: object
             required:
             - endpoint
