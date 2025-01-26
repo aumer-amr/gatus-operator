@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o ./
 
 FROM gcr.io/distroless/static:nonroot@sha256:91ca4720011393f4d4cab3a01fa5814ee2714b7d40e6c74f2505f74168398ca9
 WORKDIR /
-COPY --from=builder /build/internal/gatus-operator /gatus-operator
+COPY --from=builder /build/internal/gatus-operator/gatus-operator /gatus-operator
 USER 65532:65532
 
 ENTRYPOINT ["/gatus-operator"]
