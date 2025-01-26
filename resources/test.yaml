@@ -1,0 +1,13 @@
+---
+apiVersion: gatus.io/v1alpha1
+kind: Gatus
+metadata:
+  name: gatus-test
+  namespace: observability
+spec:
+  endpoint:
+    enabled: true
+    name: gatus-test
+    url: https://example.com
+    interval: 1m
+    conditions: ["[STATUS] == 200"]

@@ -1,0 +1,56 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/name: gatus-operator
+  name: gatus-manager
+  namespace: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: gatus-operator
+  name: gatus-manager-role
+rules:
+- apiGroups: [""]
+  resources:
+  - "configmaps"
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - gatus.io
+  resources:
+  - gatuses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - gatus.io
+  resources:
+  - gatuses/status
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/name: gatus-operator
+  name: gatus-manager-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gatus-manager-role
+subjects:
+- kind: ServiceAccount
+  name: gatus-manager
+  namespace: observability

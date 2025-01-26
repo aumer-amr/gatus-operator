@@ -1,0 +1,195 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.1
+  name: gatuses.gatus.io
+spec:
+  group: gatus.io
+  names:
+    kind: Gatus
+    listKind: GatusList
+    plural: gatuses
+    singular: gatus
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              endpoint:
+                properties:
+                  alerts:
+                    properties:
+                      description:
+                        type: string
+                      enabled:
+                        type: boolean
+                      failure-threshold:
+                        type: integer
+                      send-on-resolved:
+                        type: boolean
+                      success-threshold:
+                        type: integer
+                      type:
+                        type: string
+                    required:
+                    - failure-threshold
+                    - success-threshold
+                    - type
+                    type: object
+                  body:
+                    type: string
+                  client:
+                    properties:
+                      dns-resolver:
+                        type: string
+                      identity-aware-proxy:
+                        properties:
+                          audience:
+                            type: string
+                        required:
+                        - audience
+                        type: object
+                      ignore-redirect:
+                        type: boolean
+                      insecure:
+                        type: boolean
+                      network:
+                        type: string
+                      oauth2:
+                        properties:
+                          client-id:
+                            type: string
+                          client-secret:
+                            type: string
+                          scopes:
+                            items:
+                              type: string
+                            type: array
+                          token-url:
+                            type: string
+                        required:
+                        - client-id
+                        - client-secret
+                        - scopes
+                        - token-url
+                        type: object
+                      proxy-url:
+                        type: string
+                      timeout:
+                        type: string
+                      tls:
+                        properties:
+                          certificate-file:
+                            type: string
+                          private-key-file:
+                            type: string
+                          renegotiation:
+                            type: string
+                        type: object
+                    required:
+                    - network
+                    - timeout
+                    type: object
+                  conditions:
+                    items:
+                      type: string
+                    type: array
+                  dns:
+                    properties:
+                      query-name:
+                        type: string
+                      query-type:
+                        type: string
+                    required:
+                    - query-name
+                    - query-type
+                    type: object
+                  enabled:
+                    type: boolean
+                  graphql:
+                    type: boolean
+                  group:
+                    type: string
+                  interval:
+                    type: string
+                  method:
+                    type: string
+                  name:
+                    type: string
+                  ssh:
+                    properties:
+                      password:
+                        type: string
+                      username:
+                        type: string
+                    type: object
+                  ui:
+                    properties:
+                      badge:
+                        properties:
+                          response-time:
+                            properties:
+                              thresholds:
+                                items:
+                                  type: integer
+                                type: array
+                            required:
+                            - thresholds
+                            type: object
+                        required:
+                        - response-time
+                        type: object
+                      dont-resolve-failed-conditions:
+                        type: boolean
+                      hide-conditions:
+                        type: boolean
+                      hide-hostname:
+                        type: boolean
+                      hide-url:
+                        type: boolean
+                    required:
+                    - badge
+                    - dont-resolve-failed-conditions
+                    - hide-conditions
+                    - hide-hostname
+                    - hide-url
+                    type: object
+                  url:
+                    type: string
+                required:
+                - conditions
+                - name
+                - url
+                type: object
+            required:
+            - endpoint
+            type: object
+          status:
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
