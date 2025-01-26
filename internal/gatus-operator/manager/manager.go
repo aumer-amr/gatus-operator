@@ -3,11 +3,11 @@ package manager
 import (
 	"flag"
 	"fmt"
-	"os"
 
 	gatusiov1alpha1 "github.com/aumer-amr/gatus-operator/v2/api/v1alpha1"
 	"github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/config"
 	"github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/controller"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -26,7 +26,7 @@ func init() {
 	utilruntime.Must(gatusiov1alpha1.AddToScheme(scheme))
 }
 
-func Run() {
+func Run() error {
 	logger.Info("setting up manager")
 
 	config := config.Generate()
@@ -49,10 +49,9 @@ func Run() {
 			BindAddress: config.MetricsAddr,
 		},
 	})
-
 	if err != nil {
 		logger.Error(err, "unable to start manager")
-		os.Exit(1)
+		return err
 	}
 
 	if err := manager.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -62,11 +61,21 @@ func Run() {
 		panic(fmt.Errorf("unable to add readyz check: %w", err))
 	}
 
-	controller.Run(manager)
+	err = ctrl.NewControllerManagedBy(manager).
+		For(&gatusiov1alpha1.Gatus{}).
+		Owns(&corev1.ConfigMap{}).
+		Complete(&controller.ReconcileGatus{
+			Client: manager.GetClient(),
+		})
+	if err != nil {
+		logger.Error(err, "unable to setup controller with manager")
+		return err
+	}
 
 	logger.Info("starting manager")
 	if err := manager.Start(ctrl.SetupSignalHandler()); err != nil {
 		logger.Error(err, "problem running manager")
-		os.Exit(1)
+		return err
 	}
+	return nil
 }

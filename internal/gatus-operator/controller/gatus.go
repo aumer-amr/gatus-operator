@@ -11,15 +11,14 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func (r *ReconcileGatus) GatusReconcile(gatus *gatusiov1alpha1.Gatus) error {
+func (r *ReconcileGatus) GatusReconcile(ctx context.Context, gatus *gatusiov1alpha1.Gatus) error {
 	logger.Info("reconciling Gatus", "name", gatus.Name, "namespace", gatus.Namespace)
 
 	configMapList := corev1.ConfigMapList{}
-	err := r.Manager.GetClient().List(context.Background(), &configMapList, client.MatchingLabels{
+	err := r.List(ctx, &configMapList, client.MatchingLabels{
 		"app.kubernetes.io/managed-by": "gatus.io",
 		"gatus.io/parent-uid":          string(gatus.ObjectMeta.UID),
 	})
-
 	if err != nil {
 		return err
 	}
@@ -27,24 +26,24 @@ func (r *ReconcileGatus) GatusReconcile(gatus *gatusiov1alpha1.Gatus) error {
 	if !gatus.ObjectMeta.DeletionTimestamp.IsZero() {
 		if len(configMapList.Items) == 1 {
 			configMap := configMapList.Items[0]
-			return r.Delete(gatus, configMap)
+			return r.deleteConfigMap(ctx, configMap)
 		}
 		return nil
 	}
 
 	if len(configMapList.Items) == 0 {
-		return r.Create(gatus)
+		return r.createConfigMap(ctx, gatus)
 	}
 
 	if len(configMapList.Items) == 1 {
 		configMap := configMapList.Items[0]
-		return r.Update(gatus, configMap)
+		return r.updateConfigMap(ctx, gatus, configMap)
 	}
 
 	return nil
 }
 
-func (r *ReconcileGatus) Create(gatus *gatusiov1alpha1.Gatus) error {
+func (r *ReconcileGatus) createConfigMap(ctx context.Context, gatus *gatusiov1alpha1.Gatus) error {
 	yamlString, err := r.GetEndpointsYaml(gatus)
 	if err != nil {
 		return fmt.Errorf("error getting YAML: %w", err)
@@ -57,27 +56,24 @@ func (r *ReconcileGatus) Create(gatus *gatusiov1alpha1.Gatus) error {
 		},
 	}
 
-	r.Manager.GetClient().Create(context.Background(), configMap)
+	r.Create(ctx, configMap)
 
 	return nil
 }
 
-func (r *ReconcileGatus) Update(gatus *gatusiov1alpha1.Gatus, configMap corev1.ConfigMap) error {
+func (r *ReconcileGatus) updateConfigMap(ctx context.Context, gatus *gatusiov1alpha1.Gatus, configMap corev1.ConfigMap) error {
 	yamlString, err := r.GetEndpointsYaml(gatus)
 	if err != nil {
 		return fmt.Errorf("error getting YAML: %w", err)
 	}
 
 	configMap.Data["gatus.yaml"] = yamlString
-	r.Manager.GetClient().Update(context.Background(), &configMap)
 
-	return nil
+	return r.Update(ctx, &configMap)
 }
 
-func (r *ReconcileGatus) Delete(gatus *gatusiov1alpha1.Gatus, configMap corev1.ConfigMap) error {
-	r.Manager.GetClient().Delete(context.Background(), &configMap)
-
-	return nil
+func (r *ReconcileGatus) deleteConfigMap(ctx context.Context, configMap corev1.ConfigMap) error {
+	return r.Delete(ctx, &configMap)
 }
 
 func (r *ReconcileGatus) GetEndpointsYaml(gatus *gatusiov1alpha1.Gatus) (string, error) {
