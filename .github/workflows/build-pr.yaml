@@ -1,15 +1,9 @@
 ---
-name: Build and release
+name: Build and push pr tag
 
 on:
-  push:
-    tags:
-      - "v*"
+  pull_request:
   workflow_dispatch:
-
-concurrency:
-  group: build-and-release-app
-  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -42,10 +36,8 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/gatus-operator
           tags: |
-            type=semver,pattern={{version}},prefix=v
-            type=semver,pattern={{major}}.{{minor}},prefix=v
-            type=semver,pattern={{major}},prefix=v
-            type=ref,event=tag
+            type=ref,event=branch
+            type=ref,event=pr
 
       - name: Build and push
         uses: docker/build-push-action@4a13e500e55cf31b7a5d59a38ab2040ab0f42f56 # v5
@@ -56,9 +48,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Create GitHub release
-        if: success() && startsWith(github.ref, 'refs/tags/')
-        uses: ncipollo/release-action@6c75be85e571768fa31b40abf38de58ba0397db5 # v1
-        with:
-          generateReleaseNotes: true
