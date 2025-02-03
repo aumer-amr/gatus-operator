@@ -19,27 +19,30 @@ func (r *ReconcileGatus) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	logger.Info("reconciling", "request", req)
 
 	gatus := &gatusiov1alpha1.Gatus{}
-	err, cacheMiss := r.CheckCache(ctx, req.NamespacedName.String(), gatus)
+	err, cacheMiss := r.checkCache(ctx, req.NamespacedName.String(), gatus)
 
 	if err != nil {
 		if cacheMiss {
-			logger.Error(err, "unable to fetch Ingress from cache")
 			return ctrl.Result{}, nil
 		}
-		logger.Error(err, "unable to fetch Ingress")
+		logger.Error(err, "unable to fetch Gatus")
 		return ctrl.Result{}, err
 	}
 
-	r.GatusReconcile(ctx, gatus)
+	err = r.gatusReconcile(ctx, gatus)
+	if err != nil {
+		logger.Error(err, "unable to reconcile Gatus")
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ReconcileGatus) CheckCache(ctx context.Context, namespacedName string, typed client.Object) (error, bool) {
+func (r *ReconcileGatus) checkCache(ctx context.Context, namespacedName string, typed client.Object) (error, bool) {
 	err := r.Client.Get(ctx, client.ObjectKey{Name: namespacedName}, typed)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			logger.Info("Cache miss", "namespacedName", namespacedName)
+			logger.Error(err, "Cache miss", "namespacedName", namespacedName)
 			return err, true
 		}
 		logger.Error(err, "Failed to get object from cache", "namespacedName", namespacedName)

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	gatusiov1alpha1 "github.com/aumer-amr/gatus-operator/v2/api/v1alpha1"
-	"github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/config"
+	config "github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/config"
 	"github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/controller"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -27,11 +27,11 @@ func init() {
 }
 
 func Run() error {
-	logger.Info("setting up manager")
+	logger.Info("setting up")
 
-	config := config.Generate()
+	configuration := config.Generate()
 
-	if config.DevMode {
+	if configuration.DevMode {
 		logger.Info("running in dev mode, setting up local kubeconfig")
 
 		var kubeConfig string
@@ -43,14 +43,14 @@ func Run() error {
 
 	manager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		HealthProbeBindAddress: config.ProbeAddr,
+		HealthProbeBindAddress: configuration.ProbeAddr,
 		LeaderElection:         false,
 		Metrics: server.Options{
-			BindAddress: config.MetricsAddr,
+			BindAddress: configuration.MetricsAddr,
 		},
 	})
 	if err != nil {
-		logger.Error(err, "unable to start manager")
+		logger.Error(err, "unable to start")
 		return err
 	}
 
@@ -61,20 +61,23 @@ func Run() error {
 		panic(fmt.Errorf("unable to add readyz check: %w", err))
 	}
 
+	logger.Info(fmt.Sprintf("endpoint defaults found: %v", config.HasDefaults()))
+
 	err = ctrl.NewControllerManagedBy(manager).
 		For(&gatusiov1alpha1.Gatus{}).
+		Owns(&gatusiov1alpha1.Gatus{}).
 		Owns(&corev1.ConfigMap{}).
 		Complete(&controller.ReconcileGatus{
 			Client: manager.GetClient(),
 		})
 	if err != nil {
-		logger.Error(err, "unable to setup controller with manager")
+		logger.Error(err, "unable to setup controller")
 		return err
 	}
 
-	logger.Info("starting manager")
+	logger.Info("starting")
 	if err := manager.Start(ctrl.SetupSignalHandler()); err != nil {
-		logger.Error(err, "problem running manager")
+		logger.Error(err, "problem running")
 		return err
 	}
 	return nil

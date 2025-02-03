@@ -6,8 +6,5 @@ metadata:
   namespace: observability
 spec:
   endpoint:
-    enabled: true
     name: gatus-test
     url: https://example.com
-    interval: 1m
-    conditions: ["[STATUS] == 200"]
