@@ -2,3 +2,5 @@
 enabled: true
 interval: 5m
 conditions: ["[STATUS] == 200"]
+client:
+  dns-resolver: tcp://1.1.1.1:53

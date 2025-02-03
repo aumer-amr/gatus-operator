@@ -1,9 +1,10 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
+	"strings"
 
 	"github.com/aumer-amr/gatus-operator/v2/api/v1alpha1"
 	"gopkg.in/yaml.v3"
@@ -39,16 +40,14 @@ func ApplyDefaults(override v1alpha1.EndpointEndpoint) v1alpha1.EndpointEndpoint
 		return override
 	}
 
-	baseVal := reflect.ValueOf(base).Elem()
-	overrideVal := reflect.ValueOf(override)
+	jsonOverride, err := json.Marshal(override)
+	if err != nil {
+		return override
+	}
 
-	for i := 0; i < baseVal.NumField(); i++ {
-		baseField := baseVal.Field(i)
-		overrideField := overrideVal.Field(i)
-
-		if !overrideField.IsZero() {
-			baseField.Set(overrideField)
-		}
+	err = json.NewDecoder(strings.NewReader(string(jsonOverride))).Decode(&base)
+	if err != nil {
+		panic(err)
 	}
 
 	return *base
