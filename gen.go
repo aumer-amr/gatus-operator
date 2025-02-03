@@ -81,7 +81,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 		}
 
 		if yamlTag := fieldTag.Get("yaml"); yamlTag != "" {
-			newTag := strings.Replace(string(fieldTag), "yaml", "json", 1)
+			newTag := applyJsonTag(fieldTag)
 
 			newTag = applyOmitEmpty(newTag)
 
@@ -107,7 +107,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 			if fieldTag != "" {
 				sb.WriteString(fmt.Sprintf("\t%s %s `%s`\n", fieldName, fieldTypeString, fieldTag))
 			} else {
-				sb.WriteString(fmt.Sprintf("\t%s %s `json:\"-\"`\n", fieldName, fieldTypeString))
+				sb.WriteString(fmt.Sprintf("\t%s %s `yaml: \"-\" json:\"-\"`\n", fieldName, fieldTypeString))
 			}
 		} else if fieldType.Kind() == reflect.Ptr {
 			elemType := fieldType.Elem()
@@ -123,7 +123,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 			if fieldTag != "" {
 				sb.WriteString(fmt.Sprintf("\t%s %s `%s`\n", fieldName, fieldTypeString, fieldTag))
 			} else {
-				sb.WriteString(fmt.Sprintf("\t%s %s `json:\"-\"`\n", fieldName, fieldTypeString))
+				sb.WriteString(fmt.Sprintf("\t%s %s `yaml: \"-\" json:\"-\"`\n", fieldName, fieldTypeString))
 			}
 		} else {
 			if fieldType.Kind() == reflect.Func || fieldType.Kind() == reflect.Interface || fieldType.Kind() == reflect.Map {
@@ -138,7 +138,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 				if fieldTag != "" {
 					sb.WriteString(fmt.Sprintf("\t%s %s `%s`\n", fieldName, fieldTypeString, fieldTag))
 				} else {
-					sb.WriteString(fmt.Sprintf("\t%s %s `json:\"-\"`\n", fieldName, fieldTypeString))
+					sb.WriteString(fmt.Sprintf("\t%s %s `yaml: \"-\" json:\"-\"`\n", fieldName, fieldTypeString))
 				}
 			} else {
 				fieldTypeGeneric := fieldType.Kind().String()
@@ -149,7 +149,7 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 				if fieldTag != "" {
 					sb.WriteString(fmt.Sprintf("\t%s %s `%s`\n", fieldName, fieldTypeGeneric, fieldTag))
 				} else {
-					sb.WriteString(fmt.Sprintf("\t%s %s `json:\"-\"`\n", fieldName, fieldTypeGeneric))
+					sb.WriteString(fmt.Sprintf("\t%s %s `yaml: \"-\" json:\"-\"`\n", fieldName, fieldTypeGeneric))
 				}
 			}
 		}
@@ -158,6 +158,15 @@ func generateStruct(typ reflect.Type, structs map[string]string) {
 	sb.WriteString("}\n")
 
 	structs[typString] = sb.String()
+}
+
+func applyJsonTag(fieldTag reflect.StructTag) string {
+	newTag := string(fieldTag)
+
+	yamlTag := string(fieldTag)
+	jsonTag := strings.Replace(newTag, "yaml", "json", 1)
+
+	return yamlTag + " " + jsonTag
 }
 
 func applyOmitEmpty(newTag string) string {

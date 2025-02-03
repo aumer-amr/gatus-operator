@@ -8,6 +8,7 @@ type Config struct {
 	MetricsAddr string
 	ProbeAddr   string
 	LogLevel    string
+	ConfigPath  string
 	DevMode     bool
 }
 
@@ -30,6 +31,12 @@ func Generate() *Config {
 				return level
 			}
 			return "info"
+		}(),
+		ConfigPath: func() string {
+			if path := os.Getenv("CONFIG_PATH"); path != "" {
+				return path
+			}
+			return "/config/config.yaml"
 		}(),
 		DevMode: func() bool {
 			if devMode := os.Getenv("DEV_MODE"); devMode != "" {
