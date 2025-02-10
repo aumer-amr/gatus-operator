@@ -2,53 +2,62 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
-	"strings"
 
 	"github.com/aumer-amr/gatus-operator/v2/api/v1alpha1"
-	"gopkg.in/yaml.v3"
 )
 
-func getDefaults() (*v1alpha1.EndpointEndpoint, error) {
-	configuration := Generate()
-	filePath := configuration.ConfigPath
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	var defaults = v1alpha1.EndpointEndpoint{}
-	decoder := yaml.NewDecoder(file)
-	if err := decoder.Decode(&defaults); err != nil {
-		return nil, fmt.Errorf("failed to decode YAML: %v", err)
-	}
-
-	return &defaults, nil
+func (c Config) HasDefaults() bool {
+	defaults := c.DefaultsConfig.Defaults
+	return defaults == nil
 }
 
-func HasDefaults() bool {
-	_, err := getDefaults()
-	return err == nil
+func (c Config) ApplyDefaults(override v1alpha1.EndpointEndpoint) v1alpha1.EndpointEndpoint {
+	base := c.DefaultsConfig
+
+	overrideMap := structToMap(override)
+	normalizeEmptyObjects(overrideMap)
+
+	mergedMap := make(map[string]interface{})
+	if globalDefaults, hasGlobal := base.Defaults["global"]; hasGlobal {
+		mergedMap = structToMap(globalDefaults)
+	}
+
+	if group, hasGroup := base.Defaults[override.Group]; hasGroup {
+		groupMap := structToMap(group)
+		mergedMap = mergeMaps(mergedMap, groupMap)
+	}
+
+	mergedMap = mergeMaps(mergedMap, overrideMap)
+
+	var result v1alpha1.EndpointEndpoint
+	mapToStruct(mergedMap, &result)
+
+	return result
 }
 
-func ApplyDefaults(override v1alpha1.EndpointEndpoint) v1alpha1.EndpointEndpoint {
-	base, err := getDefaults()
-	if err != nil {
-		return override
-	}
+func structToMap(input interface{}) map[string]interface{} {
+	data, _ := json.Marshal(input)
+	var result map[string]interface{}
+	_ = json.Unmarshal(data, &result)
+	return result
+}
 
-	jsonOverride, err := json.Marshal(override)
-	if err != nil {
-		return override
-	}
+func mapToStruct(input map[string]interface{}, output interface{}) {
+	data, _ := json.Marshal(input)
+	_ = json.Unmarshal(data, output)
+}
 
-	err = json.NewDecoder(strings.NewReader(string(jsonOverride))).Decode(&base)
-	if err != nil {
-		panic(err)
+func mergeMaps(base, override map[string]interface{}) map[string]interface{} {
+	for k, v := range override {
+		base[k] = v
 	}
+	return base
+}
 
-	return *base
+func normalizeEmptyObjects(data map[string]interface{}) {
+	for k, v := range data {
+		if subMap, ok := v.(map[string]interface{}); ok && len(subMap) == 0 {
+			data[k] = nil
+		}
+	}
 }

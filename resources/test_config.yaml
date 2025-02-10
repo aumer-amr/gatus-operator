@@ -1,6 +1,17 @@
 ---
-enabled: true
-interval: 5m
-conditions: ["[STATUS] == 200"]
-client:
-  dns-resolver: tcp://1.1.1.1:53
+operator:
+  k8s-sidecar-annotation: gatus.io/enabled
+defaults:
+  global:
+    interval: 5m
+    conditions: ["[STATUS] == 200"]
+    client:
+      dns-resolver: tcp://1.1.1.1:53
+  guarded:
+    interval: 2m
+    ui:
+      hide-url: true
+      hide-hostname: true
+  infrastructure:
+    interval: 30m
+    client: {}

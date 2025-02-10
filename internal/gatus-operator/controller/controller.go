@@ -4,6 +4,7 @@ import (
 	"context"
 
 	gatusiov1alpha1 "github.com/aumer-amr/gatus-operator/v2/api/v1alpha1"
+	"github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/config"
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
@@ -13,6 +14,7 @@ var logger = ctrl.Log.WithName("controller")
 
 type ReconcileGatus struct {
 	client.Client
+	*config.Config
 }
 
 func (r *ReconcileGatus) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {

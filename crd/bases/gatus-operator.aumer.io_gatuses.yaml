@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.1
-  name: gatuses.gatus.io
+  name: gatuses.gatus-operator.aumer.io
 spec:
-  group: gatus.io
+  group: gatus-operator.aumer.io
   names:
     kind: Gatus
     listKind: GatusList

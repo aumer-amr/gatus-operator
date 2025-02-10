@@ -61,7 +61,7 @@ func Run() error {
 		panic(fmt.Errorf("unable to add readyz check: %w", err))
 	}
 
-	logger.Info(fmt.Sprintf("endpoint defaults found: %v", config.HasDefaults()))
+	logger.Info(fmt.Sprintf("endpoint defaults found: %v", configuration.HasDefaults()))
 
 	err = ctrl.NewControllerManagedBy(manager).
 		For(&gatusiov1alpha1.Gatus{}).
@@ -69,6 +69,7 @@ func Run() error {
 		Owns(&corev1.ConfigMap{}).
 		Complete(&controller.ReconcileGatus{
 			Client: manager.GetClient(),
+			Config: configuration,
 		})
 	if err != nil {
 		logger.Error(err, "unable to setup controller")

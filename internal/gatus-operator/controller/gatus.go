@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	gatusiov1alpha1 "github.com/aumer-amr/gatus-operator/v2/api/v1alpha1"
-	config "github.com/aumer-amr/gatus-operator/v2/internal/gatus-operator/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -13,15 +12,15 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const FINALIZER_NAME = "gatus.io/finalizer"
+const FINALIZER_NAME = "gatus-operator.aumer.io/finalizer"
 
 func (r *ReconcileGatus) gatusReconcile(ctx context.Context, gatus *gatusiov1alpha1.Gatus) error {
 	logger.Info("reconciling Gatus", "name", gatus.Name, "namespace", gatus.Namespace)
 
 	configMapList := corev1.ConfigMapList{}
 	err := r.List(ctx, &configMapList, client.MatchingLabels{
-		"app.kubernetes.io/managed-by": "gatus-operator",
-		"gatus.io/parent-uid":          string(gatus.ObjectMeta.UID),
+		"app.kubernetes.io/managed-by":       "gatus-operator",
+		"gatus-operator.aumer.io/parent-uid": string(gatus.ObjectMeta.UID),
 	})
 	if err != nil {
 		return err
@@ -51,7 +50,7 @@ func (r *ReconcileGatus) gatusReconcile(ctx context.Context, gatus *gatusiov1alp
 		}
 
 		if hasFinalizer {
-			controllerutil.RemoveFinalizer(gatus, "gatus.io/finalizer")
+			controllerutil.RemoveFinalizer(gatus, "gatus-operator.aumer.io/finalizer")
 			if err := r.Update(ctx, gatus); err != nil {
 				return err
 			}
@@ -109,7 +108,7 @@ func (r *ReconcileGatus) getEndpointsYaml(gatus *gatusiov1alpha1.Gatus) (string,
 		Endpoints []gatusiov1alpha1.EndpointEndpoint `json:"endpoints"`
 	}
 
-	gatusEndpoint := config.ApplyDefaults(gatus.Spec.Endpoint)
+	gatusEndpoint := r.Config.ApplyDefaults(gatus.Spec.Endpoint)
 
 	yamlBytes, err := yaml.Marshal(GatusEndpoint{Endpoints: []gatusiov1alpha1.EndpointEndpoint{gatusEndpoint}})
 	if err != nil {
@@ -122,13 +121,18 @@ func (r *ReconcileGatus) getEndpointsYaml(gatus *gatusiov1alpha1.Gatus) (string,
 }
 
 func (r *ReconcileGatus) generateMetaData(gatus *gatusiov1alpha1.Gatus) metav1.ObjectMeta {
+	labels := map[string]string{
+		"app.kubernetes.io/managed-by":       "gatus-operator",
+		"gatus-operator.aumer.io/parent-uid": string(gatus.ObjectMeta.UID),
+	}
+
+	if r.Config.OperatorConfig.K8sSidecarAnnotation != "" {
+		labels[r.Config.OperatorConfig.K8sSidecarAnnotation] = "enabled"
+	}
+
 	return metav1.ObjectMeta{
 		Name:      fmt.Sprintf("%s-%s", gatus.Name, "gatus-config"),
 		Namespace: gatus.Namespace,
-		Labels: map[string]string{
-			"app.kubernetes.io/managed-by": "gatus-operator",
-			"gatus.io/enabled":             "enabled",
-			"gatus.io/parent-uid":          string(gatus.ObjectMeta.UID),
-		},
+		Labels:    labels,
 	}
 }
