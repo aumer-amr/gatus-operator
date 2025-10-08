@@ -1,3 +1,7 @@
+Archived in favor of https://github.com/home-operations/gatus-sidecar
+
+-----------------
+
 # Gatus Operator
 <sup><sup>Not affiliated with gatus.io</sup></sup>
 
